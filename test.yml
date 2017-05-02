@@ -1,0 +1,91 @@
+kernel:
+  image: "linuxkit/kernel:4.9.x"
+  cmdline: "console=ttyS0 console=tty0 page_poison=1"
+init:
+  - linuxkit/init:b5c88b78cd9cc73ed83b45f66bc9de618223768a
+  - linuxkit/runc:b0fb122e10dbb7e4e45115177a61a3f8d68c19a9
+  - linuxkit/containerd:18eaf72f3f4f9a9f29ca1951f66df701f873060b
+  - linuxkit/ca-certificates:e091a05fbf7c5e16f18b23602febd45dd690ba2f
+  - linuxkit/memlogd:9b5834189f598f43c507f6938077113906f51012
+onboot:
+  - name: sysctl
+    image: "linuxkit/sysctl:1f5ec5d5e6f7a7a1b3d2ff9dd9e36fd6fb14756a"
+    net: host
+    pid: host
+    ipc: host
+    capabilities:
+     - CAP_SYS_ADMIN
+    readonly: true
+  - name: sysfs
+    image: linuxkit/sysfs:6c1d06f28ddd9681799d3950cddf044b930b221c
+  - name: binfmt
+    image: "linuxkit/binfmt:c7e69ebd918a237dd086a5c58dd888df772746bd"
+    binds:
+     - /proc/sys/fs/binfmt_misc:/binfmt_misc
+    readonly: true
+  - name: format
+    image: "linuxkit/format:53748000acf515549d398e6ae68545c26c0f3a2e"
+    binds:
+     - /dev:/dev
+    capabilities:
+     - CAP_SYS_ADMIN
+     - CAP_MKNOD
+  - name: mount
+    image: "linuxkit/mount:d2669e7c8ddda99fa0618a414d44261eba6e299a"
+    binds:
+     - /dev:/dev
+     - /var:/var:rshared,rbind
+    capabilities:
+     - CAP_SYS_ADMIN
+    rootfsPropagation: shared
+    command: ["/mount.sh", "/var/lib/docker"]
+services:
+  - name: rngd
+    image: "linuxkit/rngd:c42fd499690b2cb6e4e6cb99e41dfafca1cf5b14"
+    capabilities:
+     - CAP_SYS_ADMIN
+    oomScoreAdj: -800
+    readonly: true
+  - name: dhcpcd
+    image: "linuxkit/dhcpcd:57a8ef29d3a910645b2b24c124f9ce9ef53ce703"
+    binds:
+     - /var:/var
+     - /tmp/etc:/etc
+    capabilities:
+     - CAP_NET_ADMIN
+     - CAP_NET_BIND_SERVICE
+     - CAP_NET_RAW
+    net: host
+    oomScoreAdj: -800
+  - name: ntpd
+    image: "linuxkit/openntpd:a570316d7fc49ca1daa29bd945499f4963d227af"
+    capabilities:
+      - CAP_SYS_TIME
+      - CAP_SYS_NICE
+      - CAP_SYS_CHROOT
+      - CAP_SETUID
+      - CAP_SETGID
+    net: host
+  - name: docker
+    image: "docker:17.05.0-ce-dind" #"linuxkit/docker-ce:741bf21513328f674e0cdcaa55492b0b75974e08"
+    capabilities:
+     - all
+    net: host
+    mounts:
+     - type: cgroup
+       options: ["rw","nosuid","noexec","nodev","relatime"]
+    binds:
+     - /var/lib/docker:/var/lib/docker
+     - /lib/modules:/lib/modules
+     - /tmp:/tmp
+files:
+  - path: etc/docker/daemon.json
+    contents: '{"debug": true}'
+trust:
+  image:
+    - linuxkit/kernel
+    - linuxkit/binfmt
+    - linuxkit/rngd
+    - docker:17.05.0-ce-dind
+outputs:
+  - format: kernel+initrd

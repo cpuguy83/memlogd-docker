@@ -1,0 +1,15 @@
+{
+	"description": "log to linuxkit memlogd from containers",
+	"documentation": "-",
+	"entrypoint": ["/memlogd-docker"],
+	"interface": {
+		"types": ["docker.logdriver/1.0"],
+		"socket": "linuxkit-logwrite.sock"
+	},
+	"mounts": [{
+		"source": "/tmp",
+		"destination": "/tmp",
+		"type": "none",
+		"options": ["rbind", "rslave"]
+	}]
+}

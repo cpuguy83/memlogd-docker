@@ -1,0 +1,5 @@
+FROM golang:1.8
+COPY . /go/src/github.com/cpuguy83/linuxkit-memlogd-docker
+WORKDIR /go/src/github.com/cpuguy83/linuxkit-memlogd-docker
+RUN mkdir -p /pluginroot/run/docker && touch /tmp/memlogd.sock
+RUN CGO_ENABLED=0 go build --ldflags '-extldflags "-static"' -o /pluginroot/memlogd-docker
