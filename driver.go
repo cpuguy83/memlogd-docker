@@ -81,19 +81,30 @@ func proxyLogs(l *logger) {
 			return
 		}
 
-		var err error
+		var s io.Writer
+
 		switch e.Source {
 		case "stdout":
-			_, err = l.stdout.Write(e.Line)
+			s = l.stdout
 		case "stderr":
-			_, err = l.stderr.Write(e.Line)
+			s = l.stderr
 		default:
 			log.Println("got unexpected log source: %s", e.Source)
 		}
+
+		_, err := s.Write(e.Line)
 		if err != nil {
 			// TODO: Try to re-establish a conn?
 			log.Println(err)
 			return
+		}
+
+		if !e.Partial {
+			// Maybe this should be appended to `e.Line` but will make an allocation.
+			if _, err := s.Write([]byte{'\n'}); err != nil {
+				log.Println("error writing newline:", err)
+				return
+			}
 		}
 	}
 }
